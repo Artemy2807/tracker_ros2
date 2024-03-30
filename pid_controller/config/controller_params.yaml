@@ -1,0 +1,20 @@
+/**: # wildcard for the node name
+  ros__parameters:
+    start_type_description_service: true
+    use_sim_time: false
+    yaw:
+      angular: false
+      inverted: false
+      kd: 0.01
+      ki: 0.00001
+      kp: 0.004
+      max_effort: 0.5
+      timeout: 1.0
+    height:
+      angular: false
+      inverted: false
+      kd: 0.01
+      ki: 0.00001
+      kp: 0.008
+      max_effort: 0.5
+      timeout: 1.0
