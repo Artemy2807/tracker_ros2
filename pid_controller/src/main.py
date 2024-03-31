@@ -20,6 +20,7 @@ class ControlNode(Node):
             'yaw': PID(self, 'yaw', enabled=True),
             'height': PID(self, 'height', enabled=True)
         }
+        self.init_params()
         self.add_on_set_parameters_callback(self.on_params_changed)
 
         for pid_name in self.pids:
@@ -29,14 +30,28 @@ class ControlNode(Node):
         self.tracked_object = None
         self.forward_vel = 0.7
 
-        self.create_subscription(Pose2D, '/tracked_object', self.object_callback, 1)
-        self.twist_publisher = self.create_publisher(Twist, '/simple_drone/cmd_vel', 1)
+        self.create_subscription(
+            Pose2D, 
+            self.get_parameter('input_topic').value, 
+            self.object_callback, 
+            1
+        )
+        self.twist_publisher = self.create_publisher(
+            Twist, 
+            self.get_parameter('output_topic').value, 
+            1
+        )
+
         self.switch_service = self.create_service(SetBool, '~/enable', self.handle_switch)
         self.update_timer = self.create_timer(0.1, self.update)
 
         self.start_time = self.get_clock().now()
 
         self.get_logger().info('Pid control started!')
+
+    def init_params(self):
+        self.declare_parameter('input_topic', '/tracked_object')
+        self.declare_parameter('output_topic', '/simple_drone/cmd_vel')
 
     def on_params_changed(self, params):
         for pid_name in self.pids:

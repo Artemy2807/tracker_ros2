@@ -1,0 +1,6 @@
+/**: # wildcard for the node name
+  ros__parameters:
+    start_type_description_service: true
+    use_sim_time: false
+    image_topic: /simple_drone/front/image_raw
+    output_topic: /tracked_object

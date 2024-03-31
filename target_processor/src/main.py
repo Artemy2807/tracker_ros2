@@ -13,63 +13,32 @@ from geometry_msgs.msg import Pose2D
 from std_msgs.msg import Float64
 from std_srvs.srv import SetBool
 
-from enum import Enum
 from typing import Tuple
 
 class StreamNode(Node):
-    class SourceType(Enum):
-        File = 0
-        Topic = 1
-
-    def __init__(self, callback, bridge: CvBridge, source: str, type: SourceType):
+    def __init__(self, callback, bridge: CvBridge):
         super().__init__('stream_node')
 
-        self.source = source
-        self.type = type
+        self.declare_parameter('image_topic', '/simple_drone/front/image_raw')
+
+        self.source = self.get_parameter('image_topic').value
         self.callback = callback
         self.bridge = bridge
 
-        if self.type == self.SourceType.File:
-            self.cap = cv2.VideoCapture(self.source)
-            if not self.cap:
-                raise Exception(f"Couldn`t open video file {self.source}")
-            else:
-                print(f"Successfully open video file {self.source}")
-
-            # Тестовые значения
-            self.cm = np.array([[ 92.37552066, 0., 160.5], [0., 92.37552066, 120.5], [0., 0., 1.]], dtype="float64")
-            self.dc = np.zeros(5, dtype="float64")
-
-            rclpy.Timer(rclpy.Duration(1/30), self.video_callback)
-        else:
-            self.cm, self.dc = self.camera_cfg_cvt(
-                wait_for_message(
-                    msg_type=CameraInfo, 
-                    node=self,
-                    topic="/simple_drone/front/camera_info"
-                )[-1]
-            )
-            self.image_sub = self.create_subscription(Image, self.source, self.callback, 1)
-
-    def camera_cfg_cvt(self, msg: CameraInfo) -> Tuple[np.ndarray, np.ndarray]:
-        return (np.reshape(np.array(msg.k, dtype="float64"), (3, 3)), np.array(msg.d, dtype="float64"))
-
-    def video_callback(self, event):
-        ret, frame = self.cap.read()
-
-        if not ret:
-            raise Exception("End of video file")
-
-        self.callback(self.bridge.cv2_to_imgmsg(frame, "bgr8"))
+        self.image_sub = self.create_subscription(
+            Image, 
+            self.source, 
+            self.callback, 
+            1
+        )
 
 class TrackerNode(StreamNode):
-    def __init__(self, source: str = "/simple_drone/front/image_raw", type: StreamNode.SourceType = StreamNode.SourceType.Topic):
+    def __init__(self):
         super().__init__(
             callback = self.callback, 
-            bridge = CvBridge(),
-            source = source,
-            type = type
+            bridge = CvBridge()
         )
+        self.init_params()
 
         self.old_points = None
         self.old_frame = None
@@ -83,13 +52,21 @@ class TrackerNode(StreamNode):
         cv2.namedWindow("Tracker Debug")
         cv2.setMouseCallback("Tracker Debug", self.select_point)
 
-        self.object_publisher = self.create_publisher(Pose2D, '/tracked_object', 1)
+        self.object_publisher = self.create_publisher(
+            Pose2D,
+            self.get_parameter('output_topic').value, 
+            1
+        )
+
         self.yaw_setpoint_publisher = self.create_publisher(Float64, '/control_node/yaw_pid/setpoint', 1)
         self.height_setpoint_publisher = self.create_publisher(Float64, '/control_node/height_pid/setpoint', 1)
 
         self.enable_pid('/control_node/enable')
 
         self.get_logger().info('Tracker node started!')
+
+    def init_params(self):
+        self.declare_parameter('output_topic', '/tracked_object')
 
     def enable_pid(self, name: str):
         cli = self.create_client(SetBool, name)

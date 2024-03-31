@@ -2,6 +2,8 @@
   ros__parameters:
     start_type_description_service: true
     use_sim_time: false
+    input_topic: /tracked_object
+    output_topic: /simple_drone/cmd_vel
     yaw:
       angular: false
       inverted: false

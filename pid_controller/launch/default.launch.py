@@ -8,7 +8,6 @@ from launch.actions import (
 )
 from launch.substitutions import LaunchConfiguration
 
-
 def generate_launch_description() -> LaunchDescription:
     launch_description = LaunchDescription()
 
